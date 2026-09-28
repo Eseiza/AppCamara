@@ -1,0 +1,28 @@
+:root{color-scheme:dark;
+--bg:#14100e;--card:#211a17;--line:#3a2e29;--txt:#f3ece4;--mut:#a8998d;--red:#c8202f;--gold:#d9a441;--r:12px}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg) radial-gradient(circle at 20% 0,#3a1416 0,transparent 55%);color:var(--txt);padding:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:24px 0 8px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+.wrap{overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(8,minmax(120px,1fr));gap:8px;min-width:1000px}
+.ph{text-align:center;font-weight:700;color:var(--gold);font-size:14px}
+.cell{border:2px solid var(--line);border-radius:var(--r);background:var(--card);min-height:120px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;text-align:left;color:var(--txt);font:inherit}
+.cell.libre{align-items:center;justify-content:center;color:var(--mut);border-style:dashed}
+.cell .pos{font-size:11px;color:var(--mut)}
+.cell .prod{font-weight:700;font-size:14px}
+.cell .hora{font-size:12px;color:var(--mut)}
+.cell .tmr{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--gold);font-weight:600}
+.ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
+.ov.on{display:flex}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;max-width:420px;width:100%;max-height:90%;overflow:auto}
+.modal h3{margin:0 0 10px;font-size:16px}
+.modal .g{font-size:12px;color:var(--mut);margin:12px 0 6px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.p{border:0;border-radius:8px;padding:12px 8px;font:inherit;font-weight:600;color:#fff;cursor:pointer}
+button.x{margin-top:14px;width:100%;background:transparent;color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;cursor:pointer}
+button.out{background:var(--red);color:#fff;border:0;border-radius:8px;padding:12px;font:inherit;font-weight:600;width:100%;cursor:pointer}
+.big{font-size:22px;font-weight:700;margin:6px 0}
