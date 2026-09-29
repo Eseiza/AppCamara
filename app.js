@@ -7,10 +7,96 @@ var GRUPOS = {
 };
 var KEY = 'camara_fermentado_v2';
 
-// ===== Datos =====
+// ===== Firebase =====
+// Se activa solo si /firebase-config.js tiene credenciales reales (no "TU_...").
+// Si no, la app sigue funcionando 100% local (localStorage), como antes.
+var FIREBASE_ACTIVO = false;
+var db = null;
+(function () {
+  var cfg = window.firebaseConfig;
+  if (cfg && cfg.apiKey && cfg.apiKey.indexOf('TU_') !== 0 && typeof firebase !== 'undefined') {
+    try {
+      firebase.initializeApp(cfg);
+      db = firebase.firestore();
+      FIREBASE_ACTIVO = true;
+    } catch (e) { console.error('No se pudo inicializar Firebase:', e); }
+  }
+})();
+
+// ===== Datos: movimientos de la cámara =====
 var rows = [];
-try { rows = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { rows = []; }
+if (!FIREBASE_ACTIVO) {
+  try { rows = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { rows = []; }
+}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(rows)); } catch (e) {} }
+
+function agregarMovimiento(row) {
+  if (FIREBASE_ACTIVO) {
+    db.collection('movimientos').add(row).catch(function (e) { alert('No se pudo guardar: ' + e.message); });
+  } else {
+    rows.push(row); save(); render();
+  }
+}
+function cerrarMovimiento(r) {
+  r.out = Date.now();
+  if (FIREBASE_ACTIVO) {
+    db.collection('movimientos').doc(r.docId).update({ out: r.out }).catch(function (e) { alert('No se pudo guardar: ' + e.message); });
+  } else {
+    save(); render();
+  }
+}
+function suscribirseMovimientos() {
+  if (!FIREBASE_ACTIVO) return;
+  db.collection('movimientos').onSnapshot(function (snap) {
+    rows = snap.docs.map(function (d) { return Object.assign({ docId: d.id }, d.data()); });
+    render();
+  }, function (e) { console.error('Error leyendo movimientos:', e); });
+}
+
+// ===== Temperatura / humedad =====
+var TKEY = 'camara_fermentado_temp_v1';
+var temp = { setTemp: 28, setHum: 75, lecturas: [] };
+if (!FIREBASE_ACTIVO) {
+  try { var tt = JSON.parse(localStorage.getItem(TKEY) || 'null'); if (tt) temp = tt; } catch (e) {}
+}
+function saveTemp() { try { localStorage.setItem(TKEY, JSON.stringify(temp)); } catch (e) {} }
+function guardarSetPoint() {
+  if (FIREBASE_ACTIVO) db.collection('config').doc('temp').set({ setTemp: temp.setTemp, setHum: temp.setHum }, { merge: true });
+  else saveTemp();
+}
+function agregarLectura(l) {
+  if (FIREBASE_ACTIVO) {
+    db.collection('lecturas').add(l);
+  } else {
+    temp.lecturas.push(l); saveTemp(); renderTemp();
+  }
+}
+function suscribirseTemp() {
+  if (!FIREBASE_ACTIVO) return;
+  db.collection('config').doc('temp').onSnapshot(function (doc) {
+    if (doc.exists) { var d = doc.data(); temp.setTemp = d.setTemp; temp.setHum = d.setHum; }
+    renderTemp();
+  });
+  db.collection('lecturas').orderBy('t').onSnapshot(function (snap) {
+    temp.lecturas = snap.docs.map(function (d) { return d.data(); });
+    renderTemp();
+  }, function (e) { console.error('Error leyendo lecturas:', e); });
+}
+var TOL_TEMP = 2, TOL_HUM = 5;
+var INTERVALO_LECTURA = 30 * 60 * 1000; // 30 minutos
+var recordado = false;
+
+// ===== Roles y login =====
+// Usuarios válidos por rol. Cambiá estas contraseñas cuando quieras.
+var USUARIOS = {
+  ADMIN: { user: 'admin', pass: 'romero123' },
+  VISUALIZADOR: { user: 'visual', pass: 'romero123' },
+  PRODUCCION: { user: 'produccion', pass: 'romero123' }
+};
+var ROL_LABEL = { ADMIN: 'Administrador', VISUALIZADOR: 'Visualizador', PRODUCCION: 'Producción' };
+var RKEY = 'camara_fermentado_rol';
+var rol = localStorage.getItem(RKEY) || null; // null = todavía no inició sesión
+function setRol(r) { rol = r; try { localStorage.setItem(RKEY, r); } catch (e) {} applyRol(); render(); }
 
 // ===== Utilidades =====
 function color(p) {
@@ -34,12 +120,12 @@ function abierto(id) {
 }
 
 // ===== Planilla por día (turnos no calendarios) =====
-// LUNES: domingo 22:00 → martes 06:00
+// LUNES: lunes 06:00 → martes 06:00
 // MARTES: martes 06:00 → miércoles 06:00
 // MIERCOLES: miércoles 06:00 → jueves 06:00
 // JUEVES: jueves 06:00 → viernes 06:00
 // VIERNES: viernes 06:00 → sábado 06:00
-// SABADO: sábado 06:00 → sábado 22:00
+// SABADO: sábado 06:00 → lunes 06:00 (incluye el domingo)
 var DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 var DIAS_LABEL = { LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles', JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado' };
 var DIAS_OFFSET = { LUNES: 0, MARTES: 1, MIERCOLES: 2, JUEVES: 3, VIERNES: 4, SABADO: 5 };
@@ -60,8 +146,7 @@ function at(monday, offsetDays, hour) {
 }
 function windowFor(dia, monday) {
   var off = DIAS_OFFSET[dia];
-  if (dia === 'LUNES') return [at(monday, -1, 22), at(monday, 1, 6)];
-  if (dia === 'SABADO') return [at(monday, off, 6), at(monday, off, 22)];
+  if (dia === 'SABADO') return [at(monday, off, 6), at(monday, off + 2, 6)]; // sábado 06:00 → lunes 06:00
   return [at(monday, off, 6), at(monday, off + 1, 6)];
 }
 function classifyNow() {
@@ -70,10 +155,13 @@ function classifyNow() {
     var w = windowFor(DIAS[i], monday);
     if (now >= w[0] && now < w[1]) return { dia: DIAS[i], monday: monday };
   }
-  // domingo antes de las 22:00, o sábado después de las 22:00: sin turno activo, mostrar Lunes de la semana en curso
+  // el turno SABADO puede empezar en la semana anterior y llegar hasta el lunes de esta semana
+  var wSabAnt = windowFor('SABADO', mondayOf(new Date(monday.getTime() - 86400000)));
+  if (now >= wSabAnt[0] && now < wSabAnt[1]) return { dia: 'SABADO', monday: mondayOf(new Date(monday.getTime() - 86400000)) };
   return { dia: 'LUNES', monday: monday };
 }
 
+var appStart = Date.now();
 var estado = classifyNow();
 var weekMonday = estado.monday;
 var selectedDia = estado.dia;
@@ -138,6 +226,92 @@ function renderTabs() {
 }
 
 function nombre(id) { var a = id.split('-'); return 'Pasillo ' + a[0] + ' · Carro ' + a[1]; }
+
+// ===== Render temperatura/humedad =====
+function proximaLectura() {
+  var ultima = temp.lecturas.length ? temp.lecturas[temp.lecturas.length - 1].t : appStart;
+  return ultima + INTERVALO_LECTURA;
+}
+function renderTemp() {
+  document.getElementById('setTemp').value = temp.setTemp;
+  document.getElementById('setHum').value = temp.setHum;
+  var u = temp.lecturas[temp.lecturas.length - 1];
+  document.getElementById('ultimaLectura').innerHTML = u
+    ? 'Última lectura: <b>' + horaCorta(u.t) + ' · ' + fechaCorta(u.t) + '</b> — Temp <b>' + u.tempReal + '°C</b> (set ' + u.setTemp + '°C) · Hum <b>' + u.humReal + '%</b> (set ' + u.setHum + '%)'
+    : 'Todavía no hay lecturas registradas.';
+  var b = '';
+  temp.lecturas.slice().reverse().forEach(function (l) {
+    var tCls = Math.abs(l.tempReal - l.setTemp) > TOL_TEMP ? 'alerta' : 'ok';
+    var hCls = Math.abs(l.humReal - l.setHum) > TOL_HUM ? 'alerta' : 'ok';
+    b += '<tr><td>' + hm(l.t) + '</td><td class="' + tCls + '">' + l.tempReal + '°C</td><td>' + l.setTemp + '°C</td>' +
+      '<td class="' + hCls + '">' + l.humReal + '%</td><td>' + l.setHum + '%</td><td>' + (l.obs || '') + '</td></tr>';
+  });
+  document.getElementById('logTemp').innerHTML = b || '<tr><td colspan="6">Sin lecturas todavía</td></tr>';
+}
+
+function abrirLectura() {
+  document.getElementById('recordatorio').style.display = 'none';
+  abrirModal(
+    '<h3>Registrar lectura</h3>' +
+    '<label>Set temperatura (°C)</label><input id="mSetTemp" type="number" step="0.1" value="' + temp.setTemp + '">' +
+    '<label>Temperatura real (°C)</label><input id="mTempReal" type="number" step="0.1" placeholder="Ej: 28.5">' +
+    '<label>Set humedad (%)</label><input id="mSetHum" type="number" step="1" value="' + temp.setHum + '">' +
+    '<label>Humedad real (%)</label><input id="mHumReal" type="number" step="1" placeholder="Ej: 74">' +
+    '<label>Observaciones</label><textarea id="mObs" rows="2" placeholder="Opcional"></textarea>' +
+    '<button class="out" id="guardarLectura">Guardar lectura</button>' +
+    '<button class="x" data-close="1">Cancelar</button>'
+  );
+  document.getElementById('guardarLectura').addEventListener('click', function () {
+    var tR = parseFloat(document.getElementById('mTempReal').value);
+    var hR = parseFloat(document.getElementById('mHumReal').value);
+    if (isNaN(tR) || isNaN(hR)) { document.getElementById('mTempReal').focus(); return; }
+    temp.setTemp = parseFloat(document.getElementById('mSetTemp').value) || temp.setTemp;
+    temp.setHum = parseFloat(document.getElementById('mSetHum').value) || temp.setHum;
+    guardarSetPoint();
+    agregarLectura({
+      t: Date.now(), setTemp: temp.setTemp, setHum: temp.setHum,
+      tempReal: tR, humReal: hR, obs: document.getElementById('mObs').value.trim()
+    });
+    recordado = false; cerrarModal();
+  });
+}
+
+function chequearRecordatorio() {
+  if (rol !== 'ADMIN') return;
+  if (Date.now() >= proximaLectura() && !recordado) {
+    recordado = true;
+    if (!document.getElementById('ov').classList.contains('on')) abrirLectura();
+    else document.getElementById('recordatorio').style.display = 'block';
+  }
+}
+
+// ===== Permisos por rol =====
+function applyRol() {
+  document.getElementById('rolActualLabel').innerHTML = 'Perfil<b>' + (ROL_LABEL[rol] || '') + '</b>';
+  var produccion = rol === 'PRODUCCION';
+  var visualizador = rol === 'VISUALIZADOR';
+
+  // Cámara: solo lectura para VISUALIZADOR
+  document.getElementById('grid').classList.toggle('solo-lectura', visualizador);
+
+  // Módulo de temperatura/humedad: oculto para PRODUCCION
+  document.getElementById('tempSection').style.display = produccion ? 'none' : '';
+  document.getElementById('setTemp').readOnly = visualizador;
+  document.getElementById('setHum').readOnly = visualizador;
+  document.getElementById('btnLectura').style.display = visualizador ? 'none' : '';
+
+  // Planilla: PRODUCCION solo ve el turno del día corriente, sin navegación
+  document.getElementById('calToggle').style.display = produccion ? 'none' : '';
+  document.getElementById('semanaNav').style.display = produccion ? 'none' : '';
+  document.getElementById('diaTabs').style.display = produccion ? 'none' : '';
+  if (produccion) {
+    modo = 'turno';
+    var e = classifyNow();
+    weekMonday = e.monday; selectedDia = e.dia;
+    document.getElementById('vistaTurno').style.display = '';
+    document.getElementById('vistaFecha').style.display = 'none';
+  }
+}
 
 // ===== Render =====
 function render() {
@@ -240,6 +414,7 @@ function abrirModal(html) {
 function cerrarModal() { document.getElementById('ov').classList.remove('on'); }
 
 document.getElementById('grid').addEventListener('click', function (e) {
+  if (e.currentTarget.classList.contains('solo-lectura')) return;
   var c = e.target.closest('.cell'); if (!c) return;
   var id = c.dataset.id, r = abierto(id);
   if (r) {
@@ -266,15 +441,94 @@ document.getElementById('modal').addEventListener('click', function (e) {
   if (t.dataset.close) { cerrarModal(); return; }
   if (t.dataset.add) {
     var id = t.dataset.add;
-    rows.push({ id: id, p: Number(id.split('-')[0]), c: Number(id.split('-')[1]), prod: t.dataset.prod, in: Date.now(), out: null });
-    save(); cerrarModal(); render();
+    var nuevo = { id: id, p: Number(id.split('-')[0]), c: Number(id.split('-')[1]), prod: t.dataset.prod, in: Date.now(), out: null };
+    cerrarModal(); agregarMovimiento(nuevo);
   }
   if (t.dataset.out) {
     var r = abierto(t.dataset.out);
-    if (r) { r.out = Date.now(); save(); }
-    cerrarModal(); render();
+    cerrarModal();
+    if (r) cerrarMovimiento(r);
   }
 });
 document.getElementById('ov').addEventListener('click', function (e) { if (e.target.id === 'ov') cerrarModal(); });
 
-render();
+// ===== Temperatura: listeners =====
+document.getElementById('btnLectura').addEventListener('click', abrirLectura);
+document.getElementById('recordatorio').addEventListener('click', abrirLectura);
+document.getElementById('setTemp').addEventListener('change', function (e) {
+  if (rol === 'VISUALIZADOR') return;
+  temp.setTemp = parseFloat(e.target.value) || temp.setTemp; guardarSetPoint(); renderTemp();
+});
+document.getElementById('setHum').addEventListener('change', function (e) {
+  if (rol === 'VISUALIZADOR') return;
+  temp.setHum = parseFloat(e.target.value) || temp.setHum; guardarSetPoint(); renderTemp();
+});
+setInterval(chequearRecordatorio, 30000);
+
+// ===== Login / logout =====
+function mostrarLogin() {
+  document.getElementById('loginOv').style.display = 'flex';
+  document.getElementById('page').style.display = 'none';
+}
+function ocultarLogin() {
+  document.getElementById('loginOv').style.display = 'none';
+  document.getElementById('page').style.display = '';
+}
+document.getElementById('loginBtn').addEventListener('click', function () {
+  var rSel = document.getElementById('loginRol').value;
+  var u = document.getElementById('loginUser').value.trim();
+  var p = document.getElementById('loginPass').value;
+  var cred = USUARIOS[rSel];
+  var err = document.getElementById('loginError');
+  if (cred && u === cred.user && p === cred.pass) {
+    err.style.display = 'none';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    setRol(rSel);
+    ocultarLogin();
+    iniciarApp();
+  } else {
+    err.textContent = 'Usuario o contraseña incorrectos';
+    err.style.display = 'block';
+  }
+});
+document.getElementById('loginPass').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') document.getElementById('loginBtn').click();
+});
+document.getElementById('logoutBtn').addEventListener('click', function () {
+  try { localStorage.removeItem(RKEY); } catch (e) {}
+  location.reload();
+});
+
+// ===== Arranque =====
+var conEl = document.getElementById('conexion');
+function iniciarApp() {
+  applyRol();
+  render();
+  renderTemp();
+
+  if (FIREBASE_ACTIVO) {
+    conEl.textContent = 'Conectando…';
+    firebase.auth().onAuthStateChanged(function (user) {
+      if (user) {
+        conEl.textContent = '● Conectado a Firebase — sincronizado en tiempo real';
+        conEl.classList.add('on');
+        suscribirseMovimientos();
+        suscribirseTemp();
+      }
+    });
+    firebase.auth().signInAnonymously().catch(function (e) {
+      console.error('Error de autenticación:', e);
+      conEl.textContent = 'No se pudo conectar a Firebase — revisá firebase-config.js y las reglas';
+    });
+  } else {
+    conEl.textContent = '○ Modo local (sin sincronizar entre dispositivos)';
+  }
+}
+
+if (rol && USUARIOS[rol]) {
+  ocultarLogin();
+  iniciarApp();
+} else {
+  mostrarLogin();
+}
