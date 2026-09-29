@@ -1,28 +1,84 @@
-:root{color-scheme:dark;
---bg:#14100e;--card:#211a17;--line:#3a2e29;--txt:#f3ece4;--mut:#a8998d;--red:#c8202f;--gold:#d9a441;--r:12px}
+:root{color-scheme:light;
+--page:#2b1c12;--cream:#f7f1e4;--card:#ffffff;--line:#e6d9c4;
+--brown:#2b1c12;--brown2:#3a2a1a;--txt:#2b1c12;--mut:#8a7a68;
+--red:#a3271f;--gold:#c99a3d;--gold-soft:#e8c987;--green:#4caf6a;--blue:#3f9bcc;
+--r:14px}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg) radial-gradient(circle at 20% 0,#3a1416 0,transparent 55%);color:var(--txt);padding:16px}
-h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:24px 0 8px}
-.sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--page);color:var(--txt);padding:16px}
+h1{font-size:20px;margin:0 0 2px;font-family:Georgia,"Times New Roman",serif}
+h2{font-size:14px;margin:26px 0 10px;color:var(--cream);letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+h2::before{content:"";flex:0 0 6px;height:6px;border-radius:50%;background:var(--gold)}
+
+.page{max-width:1100px;margin:0 auto}
+
+/* ===== Header estilo "Reporte" ===== */
+.topcard{background:var(--cream);border:1px solid var(--gold-soft);border-radius:20px;padding:20px 24px;margin-bottom:22px;
+  box-shadow:0 10px 30px #0000004d;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.brand{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:22px;color:var(--brown);line-height:1.1}
+.brand span{display:block;font-family:system-ui,sans-serif;font-size:10px;letter-spacing:.18em;font-weight:600;color:var(--mut);margin-top:2px}
+.titlewrap{flex:1;min-width:200px}
+.sub{color:var(--mut);font-size:13px;margin-top:2px}
+.badge{display:inline-block;margin-top:8px;border:1px solid var(--gold);color:var(--red);background:#fff;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.03em}
+
 .wrap{overflow-x:auto}
-.grid{display:grid;grid-template-columns:repeat(8,minmax(120px,1fr));gap:8px;min-width:1000px}
-.ph{text-align:center;font-weight:700;color:var(--gold);font-size:14px}
-.cell{border:2px solid var(--line);border-radius:var(--r);background:var(--card);min-height:120px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;text-align:left;color:var(--txt);font:inherit}
+
+/* ===== Cámara ===== */
+.grid{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));min-width:760px;border:3px solid var(--brown);border-radius:var(--r);overflow:hidden;background:var(--cream)}
+.pasillo{display:flex;flex-direction:column;gap:8px;padding:8px;border-right:2px solid var(--gold-soft)}
+.pasillo:last-child{border-right:0}
+.ph{text-align:center;padding:4px 0;font-weight:700;color:#fff;background:var(--brown);border-radius:8px;font-size:13px;margin-bottom:2px}
+.cell{border:2px solid var(--line);border-radius:var(--r);background:var(--card);min-height:96px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;text-align:left;color:var(--txt);font:inherit;box-shadow:0 1px 2px #0000000d}
 .cell.libre{align-items:center;justify-content:center;color:var(--mut);border-style:dashed}
 .cell .pos{font-size:11px;color:var(--mut)}
 .cell .prod{font-weight:700;font-size:14px}
 .cell .hora{font-size:12px;color:var(--mut)}
 .cell .tmr{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:auto}
-table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
-th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
-th{color:var(--gold);font-weight:600}
-.ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
+
+/* ===== Panel planilla (card crema) ===== */
+.panel{background:var(--cream);border:1px solid var(--gold-soft);border-radius:20px;padding:18px 20px;box-shadow:0 10px 30px #0000004d}
+
+.semana{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.weekLabel{font-weight:700;color:var(--txt);font-size:14px;flex:1;font-family:Georgia,serif}
+button.nav{border:1px solid var(--line);background:#fff;color:var(--txt);border-radius:10px;padding:7px 13px;font:inherit;cursor:pointer}
+button.nav.hoy{color:var(--red);border-color:var(--red);font-weight:700}
+
+.diaTabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:6px}
+.diaTab{border:1px solid var(--line);background:#fff;color:var(--txt);border-radius:12px;padding:10px 8px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;line-height:1.5}
+.diaTab .h{display:block;font-weight:500;font-size:11px;color:var(--mut)}
+.diaTab.on{background:var(--brown);border-color:var(--brown);color:#fff}
+.diaTab.on .h{color:var(--gold-soft)}
+.rango{font-size:12px;color:var(--mut);margin:2px 0 14px}
+
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px;background:#fff;border-radius:10px;overflow:hidden}
+thead th{background:var(--brown);color:var(--cream);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+tbody tr:nth-child(even){background:#faf5ea}
+
+/* ===== Calendario historial ===== */
+.cal-toggle{display:flex;gap:8px;margin-bottom:14px}
+.cal-toggle button{flex:1;border:1px solid var(--line);background:#fff;color:var(--txt);border-radius:10px;padding:9px;font:inherit;font-weight:700;cursor:pointer}
+.cal-toggle button.on{background:var(--brown);border-color:var(--brown);color:#fff}
+.calnav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:10px}
+.calnav .mes{font-family:Georgia,serif;font-weight:700;font-size:17px;min-width:180px;text-align:center}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.calgrid .dow{font-size:11px;color:var(--mut);font-weight:700;letter-spacing:.05em;padding-bottom:6px}
+.calday{position:relative;border:1px solid transparent;border-radius:10px;padding:10px 0 12px;background:#fff;font-weight:700;cursor:pointer;color:var(--txt)}
+.calday.empty{background:transparent;cursor:default}
+.calday.hoy{border-color:var(--gold);color:var(--red)}
+.calday.sel{background:var(--brown);color:#fff}
+.calday .dot{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:var(--red)}
+.calday.sel .dot{background:var(--gold-soft)}
+.callegend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--mut)}
+.callegend span{display:inline-flex;align-items:center;gap:6px}
+.dotlegend{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+.ov{position:fixed;inset:0;background:#1a100966;display:none;align-items:center;justify-content:center;padding:16px}
 .ov.on{display:flex}
-.modal{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;max-width:420px;width:100%;max-height:90%;overflow:auto}
-.modal h3{margin:0 0 10px;font-size:16px}
+.modal{background:var(--cream);border:1px solid var(--gold-soft);border-radius:var(--r);padding:16px;max-width:420px;width:100%;max-height:90%;overflow:auto;box-shadow:0 8px 24px #0000004d}
+.modal h3{margin:0 0 10px;font-size:16px;font-family:Georgia,serif}
 .modal .g{font-size:12px;color:var(--mut);margin:12px 0 6px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-button.p{border:0;border-radius:8px;padding:12px 8px;font:inherit;font-weight:600;color:#fff;cursor:pointer}
-button.x{margin-top:14px;width:100%;background:transparent;color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;cursor:pointer}
-button.out{background:var(--red);color:#fff;border:0;border-radius:8px;padding:12px;font:inherit;font-weight:600;width:100%;cursor:pointer}
+button.p{border:0;border-radius:10px;padding:12px 8px;font:inherit;font-weight:600;color:#fff;cursor:pointer}
+button.x{margin-top:14px;width:100%;background:transparent;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;cursor:pointer}
+button.out{background:var(--red);color:#fff;border:0;border-radius:10px;padding:12px;font:inherit;font-weight:600;width:100%;cursor:pointer}
 .big{font-size:22px;font-weight:700;margin:6px 0}
