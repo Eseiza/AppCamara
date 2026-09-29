@@ -7,14 +7,60 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>Cámara de Fermentado</h1>
-<div class="sub">Tocá un lugar libre para ingresar un producto. Tocá uno ocupado para sacarlo.</div>
-<div class="wrap"><div class="grid" id="grid"></div></div>
+<div class="page">
 
-<h2>Planilla de registro</h2>
-<div class="wrap"><table>
-<thead><tr><th>Pasillo</th><th>Lugar</th><th>Producto</th><th>Ingreso</th><th>Egreso</th><th>Tiempo</th></tr></thead>
-<tbody id="log"></tbody></table></div>
+  <div class="topcard">
+    <div class="brand">Romero<span>PANIFICADOS</span></div>
+    <div class="titlewrap">
+      <h1>Cámara de Fermentado</h1>
+      <div class="sub" id="fechaHoy"></div>
+      <div class="badge" id="badgeTurno"></div>
+    </div>
+  </div>
+
+  <h2>Estado de la cámara</h2>
+  <div class="sub" style="margin-top:-6px;margin-bottom:12px">Tocá un lugar libre para ingresar un producto. Tocá uno ocupado para sacarlo.</div>
+  <div class="wrap"><div class="grid" id="grid"></div></div>
+
+  <h2>Planilla</h2>
+  <div class="panel">
+    <div class="cal-toggle">
+      <button id="modoTurno" class="on" data-modo="turno">Por turno</button>
+      <button id="modoFecha" data-modo="fecha">Por fecha</button>
+    </div>
+
+    <div id="vistaTurno">
+      <div class="semana">
+        <button id="prevWeek" class="nav">←</button>
+        <div id="weekLabel" class="weekLabel"></div>
+        <button id="nextWeek" class="nav">→</button>
+        <button id="hoy" class="nav hoy">Hoy</button>
+      </div>
+      <div class="diaTabs" id="diaTabs"></div>
+      <div class="rango" id="rango"></div>
+    </div>
+
+    <div id="vistaFecha" style="display:none">
+      <div class="calnav">
+        <button id="prevMes" class="nav">←</button>
+        <div class="mes" id="mesLabel"></div>
+        <button id="nextMes" class="nav">→</button>
+      </div>
+      <div class="calgrid" id="calgrid"></div>
+      <div class="callegend">
+        <span><i class="dotlegend" style="background:var(--gold)"></i>Hoy</span>
+        <span><i class="dotlegend" style="background:var(--brown)"></i>Seleccionado</span>
+        <span><i class="dotlegend" style="background:var(--red)"></i>Con registros</span>
+      </div>
+      <div class="rango" id="rangoFecha"></div>
+    </div>
+
+    <div class="wrap"><table>
+    <thead><tr><th>Pasillo</th><th>Carro</th><th>Producto</th><th>Ingreso</th><th>Egreso</th><th>Tiempo</th></tr></thead>
+    <tbody id="log"></tbody></table></div>
+  </div>
+
+</div>
 
 <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
 
