@@ -87,15 +87,19 @@ var INTERVALO_LECTURA = 30 * 60 * 1000; // 30 minutos
 var recordado = false;
 
 // ===== Roles y login =====
-// Usuarios válidos por rol. Cambiá estas contraseñas cuando quieras.
+// Roles: ADMIN (acceso total), OPERARIO (carga la cámara, ve solo el turno en curso),
+// VISUALIZADOR (solo lectura: cámara, planillas, calendario y lecturas).
+// Usuarios y contraseñas por rol (mismo esquema que app-envase). Cambialas cuando quieras.
 var USUARIOS = {
-  ADMIN: { user: 'admin', pass: 'romero123' },
-  VISUALIZADOR: { user: 'visual', pass: 'romero123' },
-  PRODUCCION: { user: 'produccion', pass: 'romero123' }
+  ADMIN:        { user: 'admin',        pass: 'admin.2026' },
+  OPERARIO:     { user: 'operario',     pass: 'operario.2026' },
+  VISUALIZADOR: { user: 'visualizador', pass: 'visualizador.2026' }
 };
-var ROL_LABEL = { ADMIN: 'Administrador', VISUALIZADOR: 'Visualizador', PRODUCCION: 'Producción' };
+var ROL_LABEL = { ADMIN: 'Admin', OPERARIO: 'Operario', VISUALIZADOR: 'Visualizador' };
 var RKEY = 'camara_fermentado_rol';
-var rol = localStorage.getItem(RKEY) || null; // null = todavía no inició sesión
+var rol = null; // null = todavía no inició sesión
+try { rol = localStorage.getItem(RKEY); } catch (e) {}
+if (!USUARIOS[rol]) rol = null; // descarta roles viejos (ej. PRODUCCION)
 function setRol(r) { rol = r; try { localStorage.setItem(RKEY, r); } catch (e) {} applyRol(); render(); }
 
 // ===== Utilidades =====
@@ -288,23 +292,23 @@ function chequearRecordatorio() {
 // ===== Permisos por rol =====
 function applyRol() {
   document.getElementById('rolActualLabel').innerHTML = 'Perfil<b>' + (ROL_LABEL[rol] || '') + '</b>';
-  var produccion = rol === 'PRODUCCION';
+  var operario = rol === 'OPERARIO';
   var visualizador = rol === 'VISUALIZADOR';
 
   // Cámara: solo lectura para VISUALIZADOR
   document.getElementById('grid').classList.toggle('solo-lectura', visualizador);
 
-  // Módulo de temperatura/humedad: oculto para PRODUCCION
-  document.getElementById('tempSection').style.display = produccion ? 'none' : '';
+  // Módulo de temperatura/humedad: oculto para OPERARIO
+  document.getElementById('tempSection').style.display = operario ? 'none' : '';
   document.getElementById('setTemp').readOnly = visualizador;
   document.getElementById('setHum').readOnly = visualizador;
   document.getElementById('btnLectura').style.display = visualizador ? 'none' : '';
 
-  // Planilla: PRODUCCION solo ve el turno del día corriente, sin navegación
-  document.getElementById('calToggle').style.display = produccion ? 'none' : '';
-  document.getElementById('semanaNav').style.display = produccion ? 'none' : '';
-  document.getElementById('diaTabs').style.display = produccion ? 'none' : '';
-  if (produccion) {
+  // Planilla: OPERARIO solo ve el turno del día corriente, sin navegación
+  document.getElementById('calToggle').style.display = operario ? 'none' : '';
+  document.getElementById('semanaNav').style.display = operario ? 'none' : '';
+  document.getElementById('diaTabs').style.display = operario ? 'none' : '';
+  if (operario) {
     modo = 'turno';
     var e = classifyNow();
     weekMonday = e.monday; selectedDia = e.dia;
@@ -474,26 +478,35 @@ function ocultarLogin() {
   document.getElementById('loginOv').style.display = 'none';
   document.getElementById('page').style.display = '';
 }
-document.getElementById('loginBtn').addEventListener('click', function () {
-  var rSel = document.getElementById('loginRol').value;
-  var u = document.getElementById('loginUser').value.trim();
-  var p = document.getElementById('loginPass').value;
-  var cred = USUARIOS[rSel];
-  var err = document.getElementById('loginError');
-  if (cred && u === cred.user && p === cred.pass) {
-    err.style.display = 'none';
-    document.getElementById('loginUser').value = '';
-    document.getElementById('loginPass').value = '';
-    setRol(rSel);
-    ocultarLogin();
-    iniciarApp();
-  } else {
-    err.textContent = 'Usuario o contraseña incorrectos';
-    err.style.display = 'block';
-  }
+var rolSeleccionado = null;
+document.getElementById('rolSelect').addEventListener('change', function () {
+  rolSeleccionado = this.value;
+  document.getElementById('formBody').classList.add('visible');
+  document.getElementById('loginMessage').textContent = '';
+  document.getElementById('username').focus();
 });
-document.getElementById('loginPass').addEventListener('keydown', function (e) {
-  if (e.key === 'Enter') document.getElementById('loginBtn').click();
+document.getElementById('loginForm').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  var msg = document.getElementById('loginMessage');
+  var u = document.getElementById('username').value.trim().toLowerCase();
+  var p = document.getElementById('password').value.trim();
+  if (!rolSeleccionado) { msg.textContent = 'Por favor, seleccioná un rol.'; msg.style.color = 'red'; return; }
+  var cred = USUARIOS[rolSeleccionado];
+  if (cred && u === cred.user && p === cred.pass) {
+    msg.textContent = '¡Inicio de sesión exitoso!';
+    msg.style.color = 'green';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    setTimeout(function () {
+      msg.textContent = '';
+      setRol(rolSeleccionado);
+      ocultarLogin();
+      iniciarApp();
+    }, 500);
+  } else {
+    msg.textContent = 'Error: Usuario o contraseña incorrectos.';
+    msg.style.color = 'red';
+  }
 });
 document.getElementById('logoutBtn').addEventListener('click', function () {
   try { localStorage.removeItem(RKEY); } catch (e) {}
@@ -526,7 +539,7 @@ function iniciarApp() {
   }
 }
 
-if (rol && USUARIOS[rol]) {
+if (rol) {
   ocultarLogin();
   iniciarApp();
 } else {
