@@ -3,67 +3,144 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cámara de Fermentado</title>
+<title>Cámara de Fermentado - Romero Panificados</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<div class="page">
 
-  <div class="topcard">
-    <div class="brand">Romero<span>PANIFICADOS</span></div>
-    <div class="titlewrap">
-      <h1>Cámara de Fermentado</h1>
-      <div class="sub" id="fechaHoy"></div>
-      <div class="badge" id="badgeTurno"></div>
+<!-- ===== LOGIN ===== -->
+<div class="loginOv" id="loginOv">
+  <div class="bg-gradient"></div>
+  <div class="bg-lines"></div>
+
+  <div class="login-container">
+    <img src="https://www.romeropanificados.com.ar/wp-content/uploads/2023/01/Recurso-8.png" alt="Romero Panificados" class="login-logo">
+    <hr class="divider">
+
+    <p class="roles-label">Seleccioná tu rol</p>
+    <select id="rolSelect">
+      <option value="" disabled selected>-- Seleccioná un rol --</option>
+      <option value="ADMIN">🔑  Admin</option>
+      <option value="OPERARIO">⚙️  Operario</option>
+      <option value="VISUALIZADOR">👁️  Visualizador</option>
+    </select>
+
+    <form id="loginForm" action="#" method="post">
+      <div class="form-body" id="formBody">
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input type="text" id="username" name="username" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" id="btnIngresar">Iniciar Sesión</button>
+      </div>
+    </form>
+
+    <p id="loginMessage"></p>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div class="container" id="page" style="display:none">
+
+  <header class="app-header">
+    <img class="header-icon" src="https://www.romeropanificados.com.ar/wp-content/uploads/2023/01/Recurso-8.png" alt="Romero Panificados">
+    <div class="rolbox">
+      <div class="rolActual" id="rolActualLabel"></div>
+      <button id="logoutBtn" class="btn-volver">Cerrar sesión</button>
     </div>
+  </header>
+
+  <h1>Cámara de Fermentado</h1>
+  <div class="info-row">
+    <span class="sub" id="fechaHoy"></span>
+    <span class="turno-badge" id="badgeTurno"></span>
+    <span class="conexion" id="conexion"></span>
   </div>
 
-  <h2>Estado de la cámara</h2>
-  <div class="sub" style="margin-top:-6px;margin-bottom:12px">Tocá un lugar libre para ingresar un producto. Tocá uno ocupado para sacarlo.</div>
-  <div class="wrap"><div class="grid" id="grid"></div></div>
+  <section>
+    <h2>Estado de la cámara</h2>
+    <div class="sub hint">Tocá un lugar libre para ingresar un producto. Tocá uno ocupado para sacarlo.</div>
+    <div class="wrap"><div class="grid" id="grid"></div></div>
+  </section>
 
-  <h2>Planilla</h2>
-  <div class="panel">
-    <div class="cal-toggle">
-      <button id="modoTurno" class="on" data-modo="turno">Por turno</button>
-      <button id="modoFecha" data-modo="fecha">Por fecha</button>
-    </div>
-
-    <div id="vistaTurno">
-      <div class="semana">
-        <button id="prevWeek" class="nav">←</button>
-        <div id="weekLabel" class="weekLabel"></div>
-        <button id="nextWeek" class="nav">→</button>
-        <button id="hoy" class="nav hoy">Hoy</button>
+  <section>
+    <h2>Planilla</h2>
+    <div class="panel">
+      <div class="cal-toggle" id="calToggle">
+        <button id="modoTurno" class="on" data-modo="turno">Por turno</button>
+        <button id="modoFecha" data-modo="fecha">Por fecha</button>
       </div>
-      <div class="diaTabs" id="diaTabs"></div>
-      <div class="rango" id="rango"></div>
-    </div>
 
-    <div id="vistaFecha" style="display:none">
-      <div class="calnav">
-        <button id="prevMes" class="nav">←</button>
-        <div class="mes" id="mesLabel"></div>
-        <button id="nextMes" class="nav">→</button>
+      <div id="vistaTurno">
+        <div class="semana" id="semanaNav">
+          <button id="prevWeek" class="nav">←</button>
+          <div id="weekLabel" class="weekLabel"></div>
+          <button id="nextWeek" class="nav">→</button>
+          <button id="hoy" class="nav hoy">Hoy</button>
+        </div>
+        <div class="diaTabs" id="diaTabs"></div>
+        <div class="rango" id="rango"></div>
       </div>
-      <div class="calgrid" id="calgrid"></div>
-      <div class="callegend">
-        <span><i class="dotlegend" style="background:var(--gold)"></i>Hoy</span>
-        <span><i class="dotlegend" style="background:var(--brown)"></i>Seleccionado</span>
-        <span><i class="dotlegend" style="background:var(--red)"></i>Con registros</span>
-      </div>
-      <div class="rango" id="rangoFecha"></div>
-    </div>
 
-    <div class="wrap"><table>
-    <thead><tr><th>Pasillo</th><th>Carro</th><th>Producto</th><th>Ingreso</th><th>Egreso</th><th>Tiempo</th></tr></thead>
-    <tbody id="log"></tbody></table></div>
-  </div>
+      <div id="vistaFecha" style="display:none">
+        <div class="calendario">
+          <div class="calnav">
+            <button id="prevMes" class="nav">←</button>
+            <div class="mes" id="mesLabel"></div>
+            <button id="nextMes" class="nav">→</button>
+          </div>
+          <div class="calgrid" id="calgrid"></div>
+          <div class="callegend">
+            <span><i class="dotlegend hoyleg"></i>Hoy</span>
+            <span><i class="dotlegend selleg"></i>Seleccionado</span>
+            <span><i class="dotlegend regleg"></i>Con registros</span>
+          </div>
+        </div>
+        <div class="rango" id="rangoFecha"></div>
+      </div>
+
+      <div class="wrap"><table class="planilla">
+        <thead><tr><th>Pasillo</th><th>Carro</th><th>Producto</th><th>Ingreso</th><th>Egreso</th><th>Tiempo</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="tempSection">
+    <h2>Temperatura y humedad</h2>
+    <div class="panel">
+      <div class="tempTop">
+        <div class="setbox">
+          <label>Set temperatura (°C)</label>
+          <input id="setTemp" type="number" step="0.1">
+        </div>
+        <div class="setbox">
+          <label>Set humedad (%)</label>
+          <input id="setHum" type="number" step="1">
+        </div>
+        <button id="btnLectura" class="btn-accion">+ Registrar lectura</button>
+      </div>
+      <div class="ultima" id="ultimaLectura"></div>
+      <div id="recordatorio" class="recordatorio" style="display:none">⏰ Es hora de registrar la lectura de temperatura y humedad</div>
+      <div class="wrap"><table class="planilla">
+        <thead><tr><th>Hora</th><th>Temp real</th><th>Set</th><th>Hum real</th><th>Set</th><th>Observaciones</th></tr></thead>
+        <tbody id="logTemp"></tbody>
+      </table></div>
+    </div>
+  </section>
 
 </div>
 
 <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
 
+<script src="firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
