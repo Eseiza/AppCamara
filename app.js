@@ -2,7 +2,7 @@
 var PASILLOS = 6;   // pasillos conectados
 var CARROS = 5;     // capacidad de carros por pasillo
 var GRUPOS = {
-  'Pan de Molde': ['Lacteado Familiar', 'Lacteado Chico', 'Salvado Familiar', 'Salvado Chico', 'Integral', 'Multicereal'],
+  'Pan de Molde': ['Lacteado Chico', 'Lacteado Familiar', 'Salvado Chico', 'Salvado Familiar', 'Integral', 'Multicereal'],
   'Bollería': ['Pancho', 'Super', 'Hamburguesa', 'Max']
 };
 var KEY = 'camara_fermentado_v2';
@@ -13,7 +13,8 @@ var KEY = 'camara_fermentado_v2';
 var FIREBASE_ACTIVO = false;
 var db = null;
 (function () {
-  var cfg = window.firebaseConfig;
+  // firebase-config.js declara 'const firebaseConfig' (no queda en window), así que se lee directo
+  var cfg = (typeof firebaseConfig !== 'undefined') ? firebaseConfig : window.firebaseConfig;
   if (cfg && cfg.apiKey && cfg.apiKey.indexOf('TU_') !== 0 && typeof firebase !== 'undefined') {
     try {
       firebase.initializeApp(cfg);
@@ -45,6 +46,23 @@ function cerrarMovimiento(r) {
     save(); render();
   }
 }
+function editarMovimiento(r, nuevoProd) {
+  if (!r.prodOriginal) r.prodOriginal = r.prod;   // queda el rastro del cambio
+  r.prod = nuevoProd; r.editado = Date.now();
+  if (FIREBASE_ACTIVO) {
+    db.collection('movimientos').doc(r.docId).update({ prod: r.prod, prodOriginal: r.prodOriginal, editado: r.editado })
+      .catch(function (e) { alert('No se pudo guardar: ' + e.message); });
+  } else {
+    save(); render();
+  }
+}
+function eliminarMovimiento(r) {
+  if (FIREBASE_ACTIVO) {
+    db.collection('movimientos').doc(r.docId).delete().catch(function (e) { alert('No se pudo eliminar: ' + e.message); });
+  } else {
+    rows.splice(rows.indexOf(r), 1); save(); render();
+  }
+}
 function suscribirseMovimientos() {
   if (!FIREBASE_ACTIVO) return;
   db.collection('movimientos').onSnapshot(function (snap) {
@@ -66,34 +84,41 @@ function guardarSetPoint() {
 }
 function agregarLectura(l) {
   if (FIREBASE_ACTIVO) {
-    db.collection('lecturas').add(l);
+    db.collection('lecturas').add(l).catch(function (e) { alert('No se pudo guardar la lectura: ' + e.message); });
   } else {
     temp.lecturas.push(l); saveTemp(); renderTemp();
   }
 }
+// Para no pedir una lectura "de más" antes de que lleguen los datos de Firebase
+var tempCargada = { cfg: !FIREBASE_ACTIVO, lec: !FIREBASE_ACTIVO };
+function tempListo() { return tempCargada.cfg && tempCargada.lec; }
 function suscribirseTemp() {
   if (!FIREBASE_ACTIVO) return;
   db.collection('config').doc('temp').onSnapshot(function (doc) {
     if (doc.exists) { var d = doc.data(); temp.setTemp = d.setTemp; temp.setHum = d.setHum; }
-    renderTemp();
-  });
+    tempCargada.cfg = true;
+    renderTemp(); chequearRecordatorio();
+  }, function (e) { console.error('Error leyendo config:', e); tempCargada.cfg = true; chequearRecordatorio(); });
   db.collection('lecturas').orderBy('t').onSnapshot(function (snap) {
     temp.lecturas = snap.docs.map(function (d) { return d.data(); });
-    renderTemp();
-  }, function (e) { console.error('Error leyendo lecturas:', e); });
+    tempCargada.lec = true;
+    renderTemp(); chequearRecordatorio();
+  }, function (e) { console.error('Error leyendo lecturas:', e); tempCargada.lec = true; chequearRecordatorio(); });
 }
 var TOL_TEMP = 2, TOL_HUM = 5;
-var INTERVALO_LECTURA = 30 * 60 * 1000; // 30 minutos
+var INTERVALO_LECTURA = 15 * 60 * 1000; // 15 minutos
 var recordado = false;
+var gateActivo = false;            // true mientras el OPERARIO está bloqueado esperando cargar la lectura
+var VENTANA_ELIM = 60 * 1000;      // una carga se puede eliminar solo durante el primer minuto
 
 // ===== Roles y login =====
 // Roles: ADMIN (acceso total), OPERARIO (carga la cámara, ve solo el turno en curso),
 // VISUALIZADOR (solo lectura: cámara, planillas, calendario y lecturas).
 // Usuarios y contraseñas por rol (mismo esquema que app-envase). Cambialas cuando quieras.
 var USUARIOS = {
-  ADMIN:        { user: 'admin',        pass: 'admin.2026' },
+  ADMIN:        { user: 'admin',        pass: 'cin>>Eszenay7;' },
   OPERARIO:     { user: 'operario',     pass: 'operario.2026' },
-  VISUALIZADOR: { user: 'visualizador', pass: 'visualizador.2026' }
+  VISUALIZADOR: { user: 'Romero', pass: 'Romero.1124' }
 };
 var ROL_LABEL = { ADMIN: 'Admin', OPERARIO: 'Operario', VISUALIZADOR: 'Visualizador' };
 var RKEY = 'camara_fermentado_rol';
@@ -104,10 +129,15 @@ function setRol(r) { rol = r; try { localStorage.setItem(RKEY, r); } catch (e) {
 
 // ===== Utilidades =====
 function color(p) {
-  if (/Lacteado/.test(p)) return '#3f9bcc';
-  if (/Salvado/.test(p)) return '#4caf6a';
-  if (/Integral|Multicereal/.test(p)) return '#c98a2b';
-  return '#c8202f';
+  if (/Multicereal/i.test(p)) return '#584B84';
+  if (/Lacteado/i.test(p)) return '#5D99C4';
+  if (/Salvado/i.test(p)) return '#18663E';
+  if (/Integral/i.test(p)) return '#A55C4D';
+  if (/Pancho/i.test(p)) return '#99ACD5';
+  if (/Super/i.test(p)) return '#385EA5';
+  if (/Hamburguesa/i.test(p)) return '#99283A';
+  if (/Max/i.test(p)) return '#A42239';
+  return '#7a1a0a';
 }
 function pad(n) { return String(n).padStart(2, '0'); }
 function hm(t) {
@@ -253,34 +283,61 @@ function renderTemp() {
   document.getElementById('logTemp').innerHTML = b || '<tr><td colspan="6">Sin lecturas todavía</td></tr>';
 }
 
-function abrirLectura() {
+function bloquear(b) {
+  var pg = document.getElementById('page');
+  pg.classList.toggle('bloqueada', b);
+  pg.inert = b;
+}
+
+// obligatoria === true -> modo bloqueo (OPERARIO): sin cancelar y el resto de la app oculto
+function abrirLectura(obligatoria) {
+  obligatoria = obligatoria === true;
   document.getElementById('recordatorio').style.display = 'none';
+  if (obligatoria) { gateActivo = true; bloquear(true); }
   abrirModal(
-    '<h3>Registrar lectura</h3>' +
+    '<h3>' + (obligatoria ? 'Lectura obligatoria' : 'Registrar lectura') + '</h3>' +
+    (obligatoria ? '<p class="sub">Pasaron 15 minutos desde la última lectura. Cargá el seteo y los valores reales para seguir usando la app.</p>' : '') +
     '<label>Set temperatura (°C)</label><input id="mSetTemp" type="number" step="0.1" value="' + temp.setTemp + '">' +
     '<label>Temperatura real (°C)</label><input id="mTempReal" type="number" step="0.1" placeholder="Ej: 28.5">' +
     '<label>Set humedad (%)</label><input id="mSetHum" type="number" step="1" value="' + temp.setHum + '">' +
     '<label>Humedad real (%)</label><input id="mHumReal" type="number" step="1" placeholder="Ej: 74">' +
     '<label>Observaciones</label><textarea id="mObs" rows="2" placeholder="Opcional"></textarea>' +
+    '<div class="err" id="mErr"></div>' +
     '<button class="out" id="guardarLectura">Guardar lectura</button>' +
-    '<button class="x" data-close="1">Cancelar</button>'
+    (obligatoria ? '' : '<button class="x" data-close="1">Cancelar</button>')
   );
+  document.getElementById('mTempReal').focus();
   document.getElementById('guardarLectura').addEventListener('click', function () {
+    var sT = parseFloat(document.getElementById('mSetTemp').value);
     var tR = parseFloat(document.getElementById('mTempReal').value);
+    var sH = parseFloat(document.getElementById('mSetHum').value);
     var hR = parseFloat(document.getElementById('mHumReal').value);
-    if (isNaN(tR) || isNaN(hR)) { document.getElementById('mTempReal').focus(); return; }
-    temp.setTemp = parseFloat(document.getElementById('mSetTemp').value) || temp.setTemp;
-    temp.setHum = parseFloat(document.getElementById('mSetHum').value) || temp.setHum;
+    if (isNaN(sT) || isNaN(tR) || isNaN(sH) || isNaN(hR)) {
+      document.getElementById('mErr').textContent = 'Completá el seteo y los valores reales de temperatura y humedad.';
+      return;
+    }
+    temp.setTemp = sT; temp.setHum = sH;
     guardarSetPoint();
     agregarLectura({
       t: Date.now(), setTemp: temp.setTemp, setHum: temp.setHum,
       tempReal: tR, humReal: hR, obs: document.getElementById('mObs').value.trim()
     });
-    recordado = false; cerrarModal();
+    recordado = false; gateActivo = false; cerrarModal(); bloquear(false);
   });
 }
 
 function chequearRecordatorio() {
+  if (!tempListo()) return;
+  if (rol === 'OPERARIO') {
+    // Cada 15' sin lectura -> bloqueo total hasta que la cargue
+    var vencida = !temp.lecturas.length || Date.now() >= proximaLectura();
+    if (vencida) { if (!gateActivo) abrirLectura(true); }
+    else {                      // ya hay una lectura vigente (ej. cargada desde otro dispositivo)
+      if (gateActivo) { gateActivo = false; cerrarModal(); }
+      bloquear(false);
+    }
+    return;
+  }
   if (rol !== 'ADMIN') return;
   if (Date.now() >= proximaLectura() && !recordado) {
     recordado = true;
@@ -298,8 +355,11 @@ function applyRol() {
   // Cámara: solo lectura para VISUALIZADOR
   document.getElementById('grid').classList.toggle('solo-lectura', visualizador);
 
-  // Módulo de temperatura/humedad: oculto para OPERARIO
-  document.getElementById('tempSection').style.display = operario ? 'none' : '';
+  // Temperatura/humedad: el OPERARIO ve el campo para cargar (sin el historial de lecturas)
+  document.getElementById('tempSection').style.display = '';
+  document.getElementById('wrapTemp').style.display = operario ? 'none' : '';
+  // OPERARIO: bloqueado hasta confirmar que tiene la lectura al día
+  bloquear(operario);
   document.getElementById('setTemp').readOnly = visualizador;
   document.getElementById('setHum').readOnly = visualizador;
   document.getElementById('btnLectura').style.display = visualizador ? 'none' : '';
@@ -353,7 +413,7 @@ function renderTabla() {
   filtradas.sort(function (a, b) { return a.in - b.in; });
   var b = '';
   filtradas.forEach(function (r) {
-    b += '<tr><td>' + r.p + '</td><td>' + r.c + '</td><td>' + r.prod + '</td><td>' + hm(r.in) + '</td><td>' +
+    b += '<tr><td>' + r.p + '</td><td>' + r.c + '</td><td>' + r.prod + (r.prodOriginal ? ' <span class="sub">(antes: ' + r.prodOriginal + ')</span>' : '') + '</td><td>' + hm(r.in) + '</td><td>' +
       (r.out ? hm(r.out) : 'En cámara') + '</td><td' + (r.out ? '' : ' data-in="' + r.in + '"') + '>' +
       dur((r.out || Date.now()) - r.in) + '</td></tr>';
   });
@@ -415,23 +475,45 @@ function abrirModal(html) {
   document.getElementById('modal').innerHTML = html;
   document.getElementById('ov').classList.add('on');
 }
-function cerrarModal() { document.getElementById('ov').classList.remove('on'); }
+var delTimer = null;
+function cerrarModal() { clearTimeout(delTimer); document.getElementById('ov').classList.remove('on'); }
+function puedeEditar() { return rol === 'ADMIN' || rol === 'OPERARIO'; }
+function puedeEliminar(r) {
+  if (rol === 'ADMIN') return true;
+  if (rol === 'OPERARIO') return Date.now() - r.in < VENTANA_ELIM;
+  return false;
+}
 
 document.getElementById('grid').addEventListener('click', function (e) {
   if (e.currentTarget.classList.contains('solo-lectura')) return;
   var c = e.target.closest('.cell'); if (!c) return;
   var id = c.dataset.id, r = abierto(id);
   if (r) {
+    var opts = '';
+    for (var g2 in GRUPOS) {
+      opts += '<optgroup label="' + g2 + '">';
+      GRUPOS[g2].forEach(function (p) { opts += '<option' + (p === r.prod ? ' selected' : '') + '>' + p + '</option>'; });
+      opts += '</optgroup>';
+    }
+    var elim = puedeEliminar(r);
     abrirModal('<h3>' + nombre(id) + '</h3><div class="big">' + r.prod + '</div>' +
       '<div class="sub">Ingresó ' + hm(r.in) + '<br>Lleva <b data-in="' + r.in + '">' + dur(Date.now() - r.in) + '</b></div>' +
+      (puedeEditar() ? '<label>Cambiar producto</label><select id="mProd">' + opts + '</select>' +
+        '<button class="btn-accion" data-edit="' + id + '">Guardar producto</button>' : '') +
       '<button class="out" data-out="' + id + '">Sacar de la cámara</button>' +
+      (elim ? '<button class="out del" id="btnElim" data-del="' + id + '">Eliminar carga (cargada por error)</button>' : '') +
       '<button class="x" data-close="1">Cancelar</button>');
+    // el operario solo puede eliminar durante el primer minuto: el botón desaparece solo
+    if (elim && rol !== 'ADMIN') {
+      delTimer = setTimeout(function () { var b = document.getElementById('btnElim'); if (b) b.remove(); },
+        Math.max(0, VENTANA_ELIM - (Date.now() - r.in)));
+    }
   } else {
     var h = '<h3>Ingresar: ' + nombre(id) + '</h3>';
     for (var g in GRUPOS) {
       h += '<div class="g">' + g + '</div><div class="btns">';
       GRUPOS[g].forEach(function (p) {
-        h += '<button class="p" data-add="' + id + '" data-prod="' + p + '" style="background:' + color(p) + '">' + p + '</button>';
+        h += '<button class="p" data-add="' + id + '" data-prod="' + p + '" style="--c:' + color(p) + '">' + p + '</button>';
       });
       h += '</div>';
     }
@@ -453,8 +535,21 @@ document.getElementById('modal').addEventListener('click', function (e) {
     cerrarModal();
     if (r) cerrarMovimiento(r);
   }
+  if (t.dataset.edit) {
+    var re = abierto(t.dataset.edit), nuevoProd = document.getElementById('mProd').value;
+    if (!puedeEditar()) return;
+    cerrarModal();
+    if (re && nuevoProd !== re.prod) editarMovimiento(re, nuevoProd);
+  }
+  if (t.dataset.del) {
+    var rd = abierto(t.dataset.del);
+    if (!rd || !puedeEliminar(rd)) { cerrarModal(); return; }   // se venció el minuto
+    if (!confirm('¿Eliminar esta carga? Se borra del registro.')) return;
+    cerrarModal();
+    eliminarMovimiento(rd);
+  }
 });
-document.getElementById('ov').addEventListener('click', function (e) { if (e.target.id === 'ov') cerrarModal(); });
+document.getElementById('ov').addEventListener('click', function (e) { if (e.target.id === 'ov' && !gateActivo) cerrarModal(); });
 
 // ===== Temperatura: listeners =====
 document.getElementById('btnLectura').addEventListener('click', abrirLectura);
@@ -467,7 +562,8 @@ document.getElementById('setHum').addEventListener('change', function (e) {
   if (rol === 'VISUALIZADOR') return;
   temp.setHum = parseFloat(e.target.value) || temp.setHum; guardarSetPoint(); renderTemp();
 });
-setInterval(chequearRecordatorio, 30000);
+setInterval(chequearRecordatorio, 10000);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) chequearRecordatorio(); });
 
 // ===== Login / logout =====
 function mostrarLogin() {
@@ -536,6 +632,7 @@ function iniciarApp() {
     });
   } else {
     conEl.textContent = '○ Modo local (sin sincronizar entre dispositivos)';
+    chequearRecordatorio();
   }
 }
 
