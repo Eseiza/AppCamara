@@ -200,13 +200,27 @@ td.alerta{color:var(--rojo);font-weight:700}
 .modal .g{font-size:12px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px}
 .modal .sub{margin:4px 0 16px;line-height:1.6}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-button.p{padding:12px 8px;color:#fff;font-size:13px;border-radius:8px}
-button.p:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.25)}
+button.p{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 10px 14px 16px;min-height:52px;
+  background:#fff;background:color-mix(in srgb,var(--c) 9%,#fff);color:var(--texto);font-size:14px;font-weight:700;line-height:1.2;text-align:center;
+  border:1.5px solid var(--border);border:1.5px solid color-mix(in srgb,var(--c) 35%,#fff);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(42,26,10,.06)}
+button.p::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c);transition:width .2s}
+button.p:hover{background:var(--c);color:#fff;border-color:var(--c);transform:translateY(-2px);box-shadow:0 6px 16px rgba(42,26,10,.2)}
+button.p:hover::before{width:0}
+button.p:active{transform:translateY(0);box-shadow:0 1px 2px rgba(42,26,10,.15);filter:brightness(.95)}
 button.out{width:100%;margin-top:6px;padding:12px;background:var(--rojo);color:#fff;font-size:14px;border-radius:8px}
 button.out:hover{background:var(--bordo)}
 button.x{margin-top:10px;width:100%;padding:11px;background:var(--gris-claro);color:var(--texto-suave);border:1.5px solid var(--border);font-size:14px}
 button.x:hover{background:var(--border);color:var(--texto)}
 .big{font-family:'Lora',serif;font-size:22px;font-weight:600;margin:6px 0;color:var(--texto)}
+
+
+/* ─── BLOQUEO / EDICIÓN DE CARGAS ─────────────────────── */
+#page.bloqueada{visibility:hidden}
+.modal .err{color:var(--rojo);font-size:13px;font-weight:700;min-height:18px;margin-top:10px}
+.modal select{margin-bottom:8px}
+.modal .btn-accion{width:100%;margin-bottom:10px}
+button.out.del{background:#fff;color:var(--rojo);border:2px solid var(--rojo)}
+button.out.del:hover{background:var(--rojo);color:#fff}
 
 /* ─── RESPONSIVE ──────────────────────────────────────── */
 @media (max-width:600px){
