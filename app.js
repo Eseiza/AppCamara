@@ -118,7 +118,7 @@ var VENTANA_ELIM = 60 * 1000;      // una carga se puede eliminar solo durante e
 var USUARIOS = {
   ADMIN:        { user: 'admin',        pass: 'cin>>Eszenay7;' },
   OPERARIO:     { user: 'operario',     pass: 'Operario.2026' },
-  VISUALIZADOR: { user: 'visualizador', pass: 'Romero.1124' }
+  VISUALIZADOR: { user: 'Romero', pass: 'Romero.1124' }
 };
 var ROL_LABEL = { ADMIN: 'Admin', OPERARIO: 'Operario', VISUALIZADOR: 'Visualizador' };
 var RKEY = 'camara_fermentado_rol';
