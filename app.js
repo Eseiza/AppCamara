@@ -116,9 +116,9 @@ var VENTANA_ELIM = 60 * 1000;      // una carga se puede eliminar solo durante e
 // VISUALIZADOR (solo lectura: cámara, planillas, calendario y lecturas).
 // Usuarios y contraseñas por rol (mismo esquema que app-envase). Cambialas cuando quieras.
 var USUARIOS = {
-  ADMIN:        { user: 'admin',        pass: 'cin>>Eszenay7;' },
+  ADMIN:        { user: 'admin',        pass: 'admin.2026' },
   OPERARIO:     { user: 'operario',     pass: 'operario.2026' },
-  VISUALIZADOR: { user: 'Romero', pass: 'Romero.1124' }
+  VISUALIZADOR: { user: 'visualizador', pass: 'visualizador.2026' }
 };
 var ROL_LABEL = { ADMIN: 'Admin', OPERARIO: 'Operario', VISUALIZADOR: 'Visualizador' };
 var RKEY = 'camara_fermentado_rol';
