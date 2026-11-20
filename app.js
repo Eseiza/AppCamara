@@ -38,6 +38,27 @@ function agregarMovimiento(row) {
     rows.push(row); save(); render();
   }
 }
+function agregarMovimientos(lista) {
+  if (FIREBASE_ACTIVO) {
+    var batch = db.batch();
+    lista.forEach(function (row) { batch.set(db.collection('movimientos').doc(), row); });
+    batch.commit().catch(function (e) { alert('No se pudo guardar: ' + e.message); });
+  } else {
+    lista.forEach(function (row) { rows.push(row); });
+    save(); render();
+  }
+}
+function cerrarMovimientos(lista) {
+  var ahora = Date.now();
+  lista.forEach(function (r) { r.out = ahora; });
+  if (FIREBASE_ACTIVO) {
+    var batch = db.batch();
+    lista.forEach(function (r) { batch.update(db.collection('movimientos').doc(r.docId), { out: ahora }); });
+    batch.commit().catch(function (e) { alert('No se pudo guardar: ' + e.message); });
+  } else {
+    save(); render();
+  }
+}
 function cerrarMovimiento(r) {
   r.out = Date.now();
   if (FIREBASE_ACTIVO) {
@@ -147,6 +168,16 @@ function hm(t) {
 function dur(ms) {
   var s = Math.max(0, Math.floor(ms / 1000));
   return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
+}
+function libresDe(p) {
+  var l = [];
+  for (var c = 1; c <= CARROS; c++) if (!abierto(p + '-' + c)) l.push(c);
+  return l;
+}
+// carros de un producto dentro de un pasillo, del más antiguo al más nuevo
+function enCamara(p, prod) {
+  return rows.filter(function (r) { return r.p === p && r.prod === prod && !r.out; })
+    .sort(function (a, b) { return a.in - b.in; });
 }
 function abierto(id) {
   for (var i = 0; i < rows.length; i++) if (rows[i].id === id && !rows[i].out) return rows[i];
@@ -354,6 +385,8 @@ function applyRol() {
 
   // Cámara: solo lectura para VISUALIZADOR
   document.getElementById('grid').classList.toggle('solo-lectura', visualizador);
+  document.getElementById('panelIngreso').style.display = visualizador ? 'none' : '';
+  document.getElementById('panelRetiro').style.display = visualizador ? 'none' : '';
 
   // Temperatura/humedad: el OPERARIO ve el campo para cargar (sin el historial de lecturas)
   document.getElementById('tempSection').style.display = '';
@@ -396,6 +429,7 @@ function render() {
     h += '</div>';
   }
   document.getElementById('grid').innerHTML = h;
+  renderMov();
   renderTabla();
 }
 
@@ -488,7 +522,7 @@ document.getElementById('grid').addEventListener('click', function (e) {
   if (e.currentTarget.classList.contains('solo-lectura')) return;
   var c = e.target.closest('.cell'); if (!c) return;
   var id = c.dataset.id, r = abierto(id);
-  if (r) {
+  if (r) {  // los lugares libres no hacen nada: el ingreso se hace desde el formulario de arriba
     var opts = '';
     for (var g2 in GRUPOS) {
       opts += '<optgroup label="' + g2 + '">';
@@ -508,28 +542,12 @@ document.getElementById('grid').addEventListener('click', function (e) {
       delTimer = setTimeout(function () { var b = document.getElementById('btnElim'); if (b) b.remove(); },
         Math.max(0, VENTANA_ELIM - (Date.now() - r.in)));
     }
-  } else {
-    var h = '<h3>Ingresar: ' + nombre(id) + '</h3>';
-    for (var g in GRUPOS) {
-      h += '<div class="g">' + g + '</div><div class="btns">';
-      GRUPOS[g].forEach(function (p) {
-        h += '<button class="p" data-add="' + id + '" data-prod="' + p + '" style="--c:' + color(p) + '">' + p + '</button>';
-      });
-      h += '</div>';
-    }
-    h += '<button class="x" data-close="1">Cancelar</button>';
-    abrirModal(h);
   }
 });
 
 document.getElementById('modal').addEventListener('click', function (e) {
   var t = e.target;
   if (t.dataset.close) { cerrarModal(); return; }
-  if (t.dataset.add) {
-    var id = t.dataset.add;
-    var nuevo = { id: id, p: Number(id.split('-')[0]), c: Number(id.split('-')[1]), prod: t.dataset.prod, in: Date.now(), out: null };
-    cerrarModal(); agregarMovimiento(nuevo);
-  }
   if (t.dataset.out) {
     var r = abierto(t.dataset.out);
     cerrarModal();
@@ -550,6 +568,105 @@ document.getElementById('modal').addEventListener('click', function (e) {
   }
 });
 document.getElementById('ov').addEventListener('click', function (e) { if (e.target.id === 'ov' && !gateActivo) cerrarModal(); });
+
+// ===== Ingreso / retiro por formulario =====
+function opcionesProducto() {
+  var o = '<option value="" disabled selected>-- Producto --</option>';
+  for (var g in GRUPOS) {
+    o += '<optgroup label="' + g + '">';
+    GRUPOS[g].forEach(function (p) { o += '<option value="' + p + '">' + p + '</option>'; });
+    o += '</optgroup>';
+  }
+  return o;
+}
+function opcionesPasillo() {
+  var o = '<option value="" disabled selected>-- Pasillo --</option>';
+  for (var p = 1; p <= PASILLOS; p++) o += '<option value="' + p + '">Pasillo ' + p + '</option>';
+  return o;
+}
+function iniciarFormularios() {
+  ['inProd', 'outProd'].forEach(function (id) { document.getElementById(id).innerHTML = opcionesProducto(); });
+  ['inPas', 'outPas'].forEach(function (id) { document.getElementById(id).innerHTML = opcionesPasillo(); });
+}
+function plural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
+
+function renderMov() {
+  // ingreso: lugares libres del pasillo elegido
+  var pi = Number(document.getElementById('inPas').value);
+  var hi = document.getElementById('inHint');
+  var ci = document.getElementById('inCant');
+  if (pi) {
+    var libres = libresDe(pi).length;
+    hi.textContent = 'Pasillo ' + pi + ': ' + (libres ? plural(libres, 'lugar libre', 'lugares libres') + ' de ' + CARROS : 'completo (sin lugares libres)');
+    ci.max = libres;
+  } else { hi.textContent = ''; ci.removeAttribute('max'); }
+
+  // retiro: carros presentes en el pasillo / producto elegido
+  var po = Number(document.getElementById('outPas').value);
+  var prodO = document.getElementById('outProd').value;
+  var ho = document.getElementById('outHint');
+  var co = document.getElementById('outCant');
+  if (po && prodO) {
+    var hay = enCamara(po, prodO).length;
+    ho.textContent = 'Pasillo ' + po + ': ' + (hay ? plural(hay, 'carro', 'carros') + ' de ' + prodO : 'no hay carros de ' + prodO);
+    co.max = hay;
+  } else if (po) {
+    var ocup = CARROS - libresDe(po).length;
+    ho.textContent = 'Pasillo ' + po + ': ' + plural(ocup, 'carro ocupado', 'carros ocupados');
+    co.removeAttribute('max');
+  } else { ho.textContent = ''; co.removeAttribute('max'); }
+}
+function msgMov(id, txt, ok) {
+  var m = document.getElementById(id);
+  m.textContent = txt;
+  m.className = 'movMsg ' + (txt ? (ok ? 'ok' : 'err') : '');
+}
+
+['inProd', 'inPas', 'outProd', 'outPas'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function () { msgMov('inMsg', ''); msgMov('outMsg', ''); renderMov(); });
+});
+
+document.getElementById('btnIngreso').addEventListener('click', function () {
+  if (rol === 'VISUALIZADOR') return;
+  var prod = document.getElementById('inProd').value;
+  var p = Number(document.getElementById('inPas').value);
+  var n = parseInt(document.getElementById('inCant').value, 10);
+  if (!prod) return msgMov('inMsg', 'Elegí el producto.', false);
+  if (!p) return msgMov('inMsg', 'Elegí el pasillo.', false);
+  if (!n || n < 1) return msgMov('inMsg', 'La cantidad tiene que ser 1 o más.', false);
+  var libres = libresDe(p);
+  if (n > libres.length) {
+    return msgMov('inMsg', libres.length
+      ? 'En el Pasillo ' + p + ' solo ' + (libres.length === 1 ? 'queda 1 lugar libre.' : 'quedan ' + libres.length + ' lugares libres.')
+      : 'El Pasillo ' + p + ' está completo.', false);
+  }
+  var ahora = Date.now();
+  agregarMovimientos(libres.slice(0, n).map(function (c) {
+    return { id: p + '-' + c, p: p, c: c, prod: prod, in: ahora, out: null };
+  }));
+  document.getElementById('inCant').value = 1;
+  msgMov('inMsg', 'Ingresaron ' + plural(n, 'carro', 'carros') + ' de ' + prod + ' al Pasillo ' + p + '.', true);
+});
+
+document.getElementById('btnRetiro').addEventListener('click', function () {
+  if (rol === 'VISUALIZADOR') return;
+  var prod = document.getElementById('outProd').value;
+  var p = Number(document.getElementById('outPas').value);
+  var n = parseInt(document.getElementById('outCant').value, 10);
+  if (!prod) return msgMov('outMsg', 'Elegí el producto.', false);
+  if (!p) return msgMov('outMsg', 'Elegí el pasillo.', false);
+  if (!n || n < 1) return msgMov('outMsg', 'La cantidad tiene que ser 1 o más.', false);
+  var hay = enCamara(p, prod);
+  if (n > hay.length) {
+    return msgMov('outMsg', hay.length
+      ? 'En el Pasillo ' + p + ' solo ' + (hay.length === 1 ? 'hay 1 carro' : 'hay ' + hay.length + ' carros') + ' de ' + prod + '.'
+      : 'No hay carros de ' + prod + ' en el Pasillo ' + p + '.', false);
+  }
+  cerrarMovimientos(hay.slice(0, n));   // salen primero los que más tiempo llevan
+  document.getElementById('outCant').value = 1;
+  msgMov('outMsg', 'Se retiraron ' + plural(n, 'carro', 'carros') + ' de ' + prod + ' del Pasillo ' + p + '.', true);
+});
+iniciarFormularios();
 
 // ===== Temperatura: listeners =====
 document.getElementById('btnLectura').addEventListener('click', abrirLectura);
