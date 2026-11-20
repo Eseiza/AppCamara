@@ -11,10 +11,11 @@
 </head>
 <body>
 
-<!-- ===== LOGIN ===== -->
+
+.  <!-- ===== LOGIN ===== -->
 <div class="loginOv" id="loginOv">
   <div class="bg-gradient"></div>
-  <div class="bg-lines"></div>
+  <div class="bg-lines"></div> 
 
   <div class="login-container">
     <img src="https://www.romeropanificados.com.ar/wp-content/uploads/2023/01/Recurso-8.png" alt="Romero Panificados" class="login-logo">
@@ -64,10 +65,56 @@
     <span class="conexion" id="conexion"></span>
   </div>
 
-  <section>
+  <section id="camaraSection">
     <h2>Estado de la cámara</h2>
-    <div class="sub hint">Tocá un lugar libre para ingresar un producto. Tocá uno ocupado para sacarlo.</div>
+
+    <!-- INGRESO (arriba de la distribución) -->
+    <div class="panel mov mov-in" id="panelIngreso">
+      <div class="movTitle">⬇ Ingreso de carros</div>
+      <div class="movRow">
+        <div class="movField">
+          <label for="inProd">Producto</label>
+          <select id="inProd"></select>
+        </div>
+        <div class="movField">
+          <label for="inPas">Pasillo</label>
+          <select id="inPas"></select>
+        </div>
+        <div class="movField mini">
+          <label for="inCant">Cantidad</label>
+          <input id="inCant" type="number" min="1" step="1" value="1" inputmode="numeric">
+        </div>
+        <button id="btnIngreso" class="btn-accion" type="button">Ingresar</button>
+      </div>
+      <div class="movHint" id="inHint"></div>
+      <div class="movMsg" id="inMsg"></div>
+    </div>
+
+    <!-- DISTRIBUCIÓN DE LA CÁMARA -->
     <div class="wrap"><div class="grid" id="grid"></div></div>
+    <div class="sub hint gridHint">Tocá un carro ocupado para cambiarle el producto o eliminarlo.</div>
+
+    <!-- RETIRO (abajo de la distribución) -->
+    <div class="panel mov mov-out" id="panelRetiro">
+      <div class="movTitle">⬆ Retiro de carros</div>
+      <div class="movRow">
+        <div class="movField">
+          <label for="outProd">Producto</label>
+          <select id="outProd"></select>
+        </div>
+        <div class="movField">
+          <label for="outPas">Pasillo</label>
+          <select id="outPas"></select>
+        </div>
+        <div class="movField mini">
+          <label for="outCant">Cantidad</label>
+          <input id="outCant" type="number" min="1" step="1" value="1" inputmode="numeric">
+        </div>
+        <button id="btnRetiro" class="btn-accion btn-retiro" type="button">Retirar</button>
+      </div>
+      <div class="movHint" id="outHint"></div>
+      <div class="movMsg" id="outMsg"></div>
+    </div>
   </section>
 
   <section>
@@ -144,4 +191,3 @@
 <script src="app.js"></script>
 </body>
 </html>
-
