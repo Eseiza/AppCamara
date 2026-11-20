@@ -124,13 +124,33 @@ button.nav.hoy:hover{background:var(--rojo);color:var(--crema)}
 }
 .cell:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(200,150,12,.18)}
 .cell.libre{align-items:center;justify-content:center;color:var(--texto-suave);border-style:dashed;border-color:var(--input-border);font-weight:600;font-size:13px}
-.cell.libre:hover{border-color:var(--dorado);background:#fef9ee}
+.cell.libre{cursor:default}
+.cell.libre:hover{transform:none;box-shadow:none}
 .grid.solo-lectura .cell{cursor:default}
 .grid.solo-lectura .cell:hover{transform:none;box-shadow:none}
 .cell .pos{font-size:10px;color:var(--texto-suave);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
 .cell .prod{font-weight:700;font-size:14px;font-family:'Lora',serif}
 .cell .hora{font-size:11px;color:var(--texto-suave);font-weight:600}
 .cell .tmr{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:auto;color:var(--bordo)}
+
+/* ─── INGRESO / RETIRO DE CARROS ──────────────────────── */
+.mov{border-left:4px solid var(--verde)}
+.mov-in{margin-bottom:14px}
+.mov-out{margin-top:14px;border-left-color:var(--rojo)}
+.movTitle{font-family:'Lora',serif;font-size:15px;font-weight:600;color:var(--texto);margin-bottom:12px}
+.movRow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.movField{display:flex;flex-direction:column;gap:5px;flex:1 1 180px;min-width:150px}
+.movField.mini{flex:0 0 110px;min-width:90px}
+.movField label{font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.5px}
+.movField select,.movField input{background:#fff;padding:10px 12px;font-size:15px}
+.movRow .btn-accion{min-width:130px;padding:11px 18px}
+.btn-retiro{color:var(--bordo);border-color:var(--bordo)}
+.btn-retiro:hover{background:var(--bordo)}
+.movHint{font-size:12px;color:var(--texto-suave);font-weight:600;margin-top:10px;min-height:16px}
+.movMsg{font-size:13px;font-weight:700;min-height:18px;margin-top:4px}
+.movMsg.err{color:var(--rojo)}
+.movMsg.ok{color:var(--verde)}
+.gridHint{margin:8px 0 0}
 
 /* ─── PANEL ───────────────────────────────────────────── */
 .panel{background:var(--gris-claro);border:1px solid var(--border);border-radius:12px;padding:18px}
@@ -193,12 +213,6 @@ td.alerta{color:var(--rojo);font-weight:700}
 .ov{position:fixed;inset:0;background:rgba(42,26,10,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:1000}
 .ov.on{display:flex}
 .modal{background:#fff;border-radius:16px;border-top:4px solid var(--dorado);padding:28px;max-width:420px;width:100%;max-height:90%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .25s cubic-bezier(.16,1,.3,1) both}
-.modal{scrollbar-width:thin;scrollbar-color:#d9c7a3 transparent}
-@supports not (scrollbar-width:thin){
-  .modal::-webkit-scrollbar{width:8px}
-  .modal::-webkit-scrollbar-track{background:transparent;margin:14px 0}
-  .modal::-webkit-scrollbar-thumb{background:#d9c7a3;border-radius:8px;border:2px solid #fff}
-}
 .modal h3{font-family:'Lora',serif;font-size:17px;color:var(--texto);margin-bottom:16px}
 .modal label{display:block;margin:12px 0 5px}
 .modal input[type=number],.modal textarea{padding:9px 12px;font-size:14px;background:#fff}
@@ -244,6 +258,9 @@ button.out.del:hover{background:var(--rojo);color:#fff}
   .rolActual{display:none}
   .calday{height:36px}
   .diaTabs{grid-template-columns:repeat(3,1fr)}
+  .movField,.movField.mini{flex:1 1 100%}
+  .movRow .btn-accion{width:100%}
+  .movField select,.movField input{font-size:16px}
 }
 @media print{
   body{background:#fff;padding:0}
